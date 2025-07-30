@@ -54,7 +54,8 @@ class FollowMe(Node):
             ############################
 
             ############################
-	    # Draw blue circle around ankle
+	    # Get ankle_x and ankle_y in pixels
+            # Draw blue circle around ankle
 	    ############################
 
 
@@ -64,8 +65,6 @@ class FollowMe(Node):
                 self.cmd_pub.publish(twist)  # stop
                 return
 
-            # Get ankle x in pixels
-            ankle_x = int(ankle.x * image_width)
             offset = ankle_x - self.center_x  # How far from center
             
             ############################
