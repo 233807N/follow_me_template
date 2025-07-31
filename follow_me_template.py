@@ -54,28 +54,46 @@ class FollowMe(Node):
             ############################
 
             ############################
-	    # Get ankle_x and ankle_y in pixels
-            # Draw blue circle around ankle
+            # --- Landmark Processing and Visualization ---
+            # Extract pixel coordinates of the left ankle.
+            # Note: MediaPipe normalized coordinates (0.0 to 1.0) need to be scaled by image dimensions.
+            # It's safer to use cv_image.shape[1] for width to ensure it matches the current frame.   
+	    ############################
+
+            ############################
+            # Log ankle coordinates for debugging.
+            ############################
+
+            ############################
+	    # Draw a blue circle around the detected left ankle on the image.
+	    # Parameters: image, center_coordinates, radius, color (BGR), thickness
 	    ############################
 
 
-            offset = ankle_x - self.center_x  # How far from center
-		
+            # --- Robot Control Logic ---
+            # Calculate the horizontal offset of the ankle from the image center.
+            # A positive offset means the ankle is to the right of the center.
+            offset_from_center = ankle_x_pixel - (cv_image.shape[1] // 2)
 
+
+            # Check if the ankle landmark's visibility confidence is below a threshold.
+            # If visibility is low, it indicates an unreliable detection.
             if ankle.visibility < 0.5:
-                self.get_logger().info('Ankle not visible. Stopping.')
-                self.cmd_pub.publish(twist)  # stop
-                return
-
+                self.get_logger().warn('Ankle visibility too low (< 0.5). Stopping robot.')
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
             
             ############################
-            # Angular control: rotate to center the ankle
+            # Angular control 
+            # Check if the ankle is outside the acceptable horizontal tolerance zone.
+            # This indicates the robot needs to rotate to re-center the ankle.
             # P-controller (Greater error = greater turn speed)
             ############################
            
             ############################
-            # If the ankle is centered -> move forward slowly
-            ############################
+            # If the ankle is within the tolerance zone, it's considered centered.
+	    # Ankle is centered, move forward at a constant linear speed.
+	    ############################
                 
 
         else:
@@ -85,8 +103,12 @@ class FollowMe(Node):
 
         self.cmd_pub.publish(twist)
 
-        # Send debug image
+        # --- Debug Image Publishing (Moved and Consolidated) ---
+            # This block is now outside the 'if results.pose_landmarks' to ensure a debug image
+            # is always published, even if no landmarks are detected (it will just be the raw image then).
+            # The previous debug_pub.publish(debug_msg) inside the 'if' block is removed to avoid redundancy.
         try:
+            # Convert the (potentially annotated) OpenCV image back to a ROS Image message.
             debug_msg = self.bridge.cv2_to_imgmsg(cv_image, encoding='bgr8')
             self.debug_pub.publish(debug_msg)
         except Exception as e:
